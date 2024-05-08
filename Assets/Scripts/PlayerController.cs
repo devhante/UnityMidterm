@@ -6,27 +6,53 @@ public class PlayerController : MonoBehaviour
 {
     public float walkSpeed = 5f;
     public float runSpeed = 8f;
+    public float airWalkSpeed = 3f;
+    public float jumpImpulse = 10f;
+
     private Vector2 moveInput;
+    TouchingDirections touchingDirections;
 
     public float CurrentMoveSpeed
     {
         get
         {
-            if (IsMoving)
+            if (CanMove)
             {
-                if (IsRunning)
+                if (IsMoving && !touchingDirections.IsOnWall)
                 {
-                    return runSpeed;
+                    if (touchingDirections.IsGrounded)
+                    {
+                        if (IsRunning)
+                        {
+                            return runSpeed;
+                        }
+                        else
+                        {
+                            return walkSpeed;
+                        }
+                    }
+                    else
+                    {
+                        return airWalkSpeed;
+                    }
                 }
                 else
                 {
-                    return walkSpeed;
+                    return 0;
                 }
             }
             else
             {
                 return 0;
             }
+        }
+    }
+
+    public bool CanMove
+    {
+        get
+        {
+            return animator.GetBool("canMove");
         }
     }
 
@@ -73,19 +99,19 @@ public class PlayerController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+        touchingDirections = GetComponent<TouchingDirections>();
     }
 
     private void FixedUpdate()
     {
         rb.velocity = new Vector2(moveInput.x * CurrentMoveSpeed * Time.deltaTime, rb.velocity.y);
+        animator.SetFloat("yVelocity", rb.velocity.y);
     }
 
     public void OnMove(InputAction.CallbackContext context)
     {
         moveInput = context.ReadValue<Vector2>();
-
         IsMoving = moveInput != Vector2.zero;
-
         SetFacingDirection(moveInput);
     }
 
@@ -103,5 +129,22 @@ public class PlayerController : MonoBehaviour
             IsRunning = true;
         else if (context.canceled)
             IsRunning = false;
+    }
+
+    public void OnJump(InputAction.CallbackContext context)
+    {
+        if (context.started && touchingDirections.IsGrounded && CanMove)
+        {
+            animator.SetTrigger("jumpTrigger");
+            rb.velocity = new Vector2(rb.velocity.x, jumpImpulse);
+        }
+    }
+
+    public void OnAttack(InputAction.CallbackContext context)
+    {
+        if (context.started)
+        {
+            animator.SetTrigger("attack");
+        }
     }
 }
